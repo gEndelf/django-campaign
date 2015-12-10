@@ -1,18 +1,20 @@
 from django import template, http
 from django.conf import settings
-from django.shortcuts import get_object_or_404, render_to_response
-from django.core.urlresolvers import reverse
 from django.contrib.sites.models import Site
-from campaign.models import Campaign, BlacklistEntry
+from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
+from django.shortcuts import get_object_or_404, render_to_response
+
 from campaign.forms import SubscribeForm, UnsubscribeForm
+from campaign.models import Campaign
 
 
 def view_online(request, object_id):
     campaign = get_object_or_404(Campaign, pk=object_id, online=True)
 
     if campaign.template.html is not None and \
-        campaign.template.html != u"" and \
-        not request.GET.get('txt', False):
+                    campaign.template.html != u"" and \
+            not request.GET.get('txt', False):
         tpl = template.Template(campaign.template.html)
         content_type = 'text/html; charset=utf-8'
     else:
@@ -20,11 +22,14 @@ def view_online(request, object_id):
         content_type = 'text/plain; charset=utf-8'
     context = template.Context({})
     if campaign.online:
-        context.update({'view_online_url': reverse("campaign_view_online", kwargs={'object_id': campaign.pk}),
-                        'viewed_online': True,
-                        'site_url': Site.objects.get_current().domain})
-    return http.HttpResponse(tpl.render(context),
-                            content_type=content_type)
+        context.update({
+            'view_online_url':
+                reverse("campaign_view_online",
+                        kwargs={'object_id': campaign.pk}),
+            'viewed_online': True,
+            'site_url': Site.objects.get_current().domain})
+    return http.HttpResponse(
+        tpl.render(context), content_type=content_type)
 
 
 def subscribe(request, template_name='campaign/subscribe.html',
@@ -38,12 +43,15 @@ def subscribe(request, template_name='campaign/subscribe.html',
                 success = callback(form.cleaned_data['email'])
                 context.update({'success': success, 'action': 'subscribe'})
             else:
-                raise ImproperlyConfigured("CAMPAIGN_SUBSCRIBE_CALLBACK must be configured to use the subscribe view")
+                raise ImproperlyConfigured(
+                    "CAMPAIGN_SUBSCRIBE_CALLBACK must be configured "
+                    "to use the subscribe view")
     else:
         form = form_class()
     context.update({'form': form})
-    return render_to_response(template_name, context,
-                        context_instance=template.RequestContext(request))
+    return render_to_response(
+        template_name, context,
+        context_instance=template.RequestContext(request))
 
 
 def unsubscribe(request, template_name='campaign/unsubscribe.html',
@@ -57,15 +65,18 @@ def unsubscribe(request, template_name='campaign/unsubscribe.html',
                 success = callback(form.cleaned_data['email'])
                 context.update({'success': success, 'action': 'unsubscribe'})
             else:
-                raise ImproperlyConfigured("CAMPAIGN_UNSUBSCRIBE_CALLBACK must be configured to use the unsubscribe view")
+                raise ImproperlyConfigured(
+                    "CAMPAIGN_UNSUBSCRIBE_CALLBACK must be configured "
+                    "to use the unsubscribe view")
     else:
         initial = {}
         if request.GET.get('email'):
             initial['email'] = request.GET.get('email')
         form = form_class(initial=initial)
     context.update({'form': form})
-    return render_to_response(template_name, context,
-                        context_instance=template.RequestContext(request))
+    return render_to_response(
+        template_name, context,
+        context_instance=template.RequestContext(request))
 
 
 def _get_callback(setting):
